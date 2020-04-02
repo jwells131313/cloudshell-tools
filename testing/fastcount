@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CNT=0
+
+while true
+do
+  CNT=$((CNT+1))
+
+  echo "${CNT} on $(date)"
+done
