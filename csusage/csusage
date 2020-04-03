@@ -1,0 +1,55 @@
+#!/bin/bash
+
+#
+# Author: Chris Kasso (chris.kasso@oracle.com)
+#
+# This script uses the audit logs to identify users who requested a Cloud Shell 
+# session between the start and end time provided below.
+# It ignores requests from the canary.  
+#
+
+STARTTIME=2020-04-03T15:00Z
+ENDTIME=2020-04-03T16:00Z
+
+
+# prod-control-plane
+COMPARTMENT=ocid1.compartment.oc1..aaaaaaaa4sumjaawrglw3rytzgimclziobqyh5noqtyuppvvpuiovfhfqlla
+
+# pre-prod-control-plane
+# COMPARTMENT=ocid1.compartment.oc1..aaaaaaaaq2v6u7oj367bwsb3qks343vn2zghshbwrn7btuum3u32w3nyvgaq
+
+# We ignore requests from our canary tenancy:
+CANARY_TENANCY=ocid1.tenancy.oc1..aaaaaaaau2kvkmgovgfzrfnuhh47x3kxmtkuqe6hzsfby5yst2hhr5comnda
+
+COMPACT=0
+
+if [ "$#" -gt 1 ] || [ "$1" == "-h" ]; then
+   printf "Usage: csusage [-c]\n"
+   printf " use -c (compact) lists impacted tenant OCIDS only.\n"
+   exit 0
+elif  [ "$1" == "-c" ]; then
+   COMPACT=1
+fi
+
+echo "Gathering users for time $STARTTIME through $ENDTIME using CLI profile $OCI_CLI_PROFILE."
+
+oci audit event list --start-time $STARTTIME --end-time $ENDTIME --all -c $COMPARTMENT > /tmp/oci_out
+if [ $COMPACT != 1 ]; then
+   cat /tmp/oci_out | \
+   jq --arg CANARY_TENANCY "$CANARY_TENANCY" '.data[] | select( .data["event-name"] != null) |
+              select( .data["event-name"] | contains("CreateHost") ) |
+              select( .data.identity["tenant-id"] != null ) |
+              select( .data.identity["tenant-id"] != $CANARY_TENANCY ) |
+              {event: .data["event-name"],
+               date: .data.response.headers.Date[0],
+               user: .data.identity["principal-name"],
+               tenant_id: .data.identity["tenant-id"],
+               response: .data.response.status}'
+else
+   cat /tmp/oci_out | \
+   jq --arg CANARY_TENANCY "$CANARY_TENANCY" '.data[] | select( .data["event-name"] != null) |
+              select( .data["event-name"] | contains("CreateHost") ) |
+              select( .data.identity["tenant-id"] != null ) |
+              select( .data.identity["tenant-id"] != $CANARY_TENANCY ) |
+              .data.identity["tenant-id"]'
+fi
