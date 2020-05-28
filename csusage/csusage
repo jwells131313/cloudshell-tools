@@ -37,7 +37,7 @@ oci audit event list --start-time $STARTTIME --end-time $ENDTIME --all -c $COMPA
 if [ $COMPACT != 1 ]; then
    cat /tmp/oci_out | \
    jq --arg CANARY_TENANCY "$CANARY_TENANCY" '.data[] | select( .data["event-name"] != null) |
-              select( .data["event-name"] | contains("CreateHost") ) |
+              select( .data["event-name"] | contains("CreateCloudShellHost") ) |
               select( .data.identity["tenant-id"] != null ) |
               select( .data.identity["tenant-id"] != $CANARY_TENANCY ) |
               {event: .data["event-name"],
@@ -48,7 +48,7 @@ if [ $COMPACT != 1 ]; then
 else
    cat /tmp/oci_out | \
    jq --arg CANARY_TENANCY "$CANARY_TENANCY" '.data[] | select( .data["event-name"] != null) |
-              select( .data["event-name"] | contains("CreateHost") ) |
+              select( .data["event-name"] | contains("CreateCloudShellHost") ) |
               select( .data.identity["tenant-id"] != null ) |
               select( .data.identity["tenant-id"] != $CANARY_TENANCY ) |
               .data.identity["tenant-id"]'
